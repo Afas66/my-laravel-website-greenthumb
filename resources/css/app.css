@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    .btn-primary {
+        @apply bg-primary-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary-700 transition-colors duration-200;
+    }
+    
+    .btn-secondary {
+        @apply bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-colors duration-200;
+    }
+    
+    .plant-card {
+        @apply bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden;
+    }
+    
+    .difficulty-badge {
+        @apply absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded-full;
+    }
+    
+    .difficulty-beginner {
+        @apply bg-green-100 text-green-800;
+    }
+    
+    .difficulty-intermediate {
+        @apply bg-yellow-100 text-yellow-800;
+    }
+    
+    .difficulty-advanced {
+        @apply bg-red-100 text-red-800;
+    }
+}
