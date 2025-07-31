@@ -5,6 +5,8 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PlantController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\StaffDashboardController;
 use App\Http\Controllers\OrderController;
 use Illuminate\Support\Facades\Route;
 
@@ -45,26 +47,47 @@ Route::middleware('auth')->group(function () {
 
 // Dashboard (redirect based on role)
 Route::get('/dashboard', function () {
-    if (auth()->user()->isAdmin() || auth()->user()->isStaff()) {
+    if (auth()->user()->isAdmin()) {
         return redirect()->route('admin.dashboard');
+    } elseif (auth()->user()->isStaff()) {
+        return redirect()->route('staff.dashboard');
     }
     return redirect()->route('home');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 // Admin Routes
 Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/', function () {
-        return view('admin.dashboard');
-    })->name('dashboard');
-    
+    Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+
     // Plant Management
-    Route::resource('plants', PlantController::class)->except(['show']);
-    Route::resource('categories', CategoryController::class)->except(['show']);
-    
+    Route::resource('plants', \App\Http\Controllers\Admin\PlantController::class);
+    Route::patch('plants/{plant}/toggle-featured', [\App\Http\Controllers\Admin\PlantController::class, 'toggleFeatured'])->name('plants.toggle-featured');
+    Route::patch('plants/{plant}/toggle-active', [\App\Http\Controllers\Admin\PlantController::class, 'toggleActive'])->name('plants.toggle-active');
+
+    // Category Management
+    Route::resource('categories', \App\Http\Controllers\Admin\CategoryController::class);
+    Route::patch('categories/{category}/toggle-active', [\App\Http\Controllers\Admin\CategoryController::class, 'toggleActive'])->name('categories.toggle-active');
+
     // Order Management
-    Route::get('/orders', [OrderController::class, 'adminIndex'])->name('orders.index');
-    Route::get('/orders/{order}', [OrderController::class, 'adminShow'])->name('orders.show');
-    Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.update-status');
+    Route::resource('orders', \App\Http\Controllers\Admin\OrderController::class)->only(['index', 'show', 'destroy']);
+    Route::patch('orders/{order}/status', [\App\Http\Controllers\Admin\OrderController::class, 'updateStatus'])->name('orders.update-status');
+    Route::patch('orders/{order}/cancel', [\App\Http\Controllers\Admin\OrderController::class, 'cancel'])->name('orders.cancel');
+    Route::patch('orders/bulk-update-status', [\App\Http\Controllers\Admin\OrderController::class, 'bulkUpdateStatus'])->name('orders.bulk-update-status');
+
+    // User Management (Admin only)
+    Route::middleware('role:admin')->group(function () {
+        Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
+        Route::patch('users/{user}/toggle-verification', [\App\Http\Controllers\Admin\UserController::class, 'toggleVerification'])->name('users.toggle-verification');
+        Route::delete('users/bulk-delete', [\App\Http\Controllers\Admin\UserController::class, 'bulkDelete'])->name('users.bulk-delete');
+    });
+});
+
+// Staff Routes (additional staff-specific functionality)
+Route::middleware(['auth', 'role:staff'])->prefix('staff')->name('staff.')->group(function () {
+    Route::get('/', [StaffDashboardController::class, 'index'])->name('dashboard');
+    Route::patch('orders/{order}/quick-status', [StaffDashboardController::class, 'quickUpdateOrderStatus'])->name('orders.quick-status');
+    Route::patch('orders/mark-processing', [StaffDashboardController::class, 'markAsProcessing'])->name('orders.mark-processing');
+    Route::patch('plants/{plant}/update-stock', [StaffDashboardController::class, 'updateStock'])->name('plants.update-stock');
 });
 
 // Profile Routes

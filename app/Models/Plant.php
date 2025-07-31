@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Builder;
 
 class Plant extends Model
 {
@@ -25,101 +25,27 @@ class Plant extends Model
         'care_instructions',
         'is_featured',
         'is_active',
-        'category_id'
+        'category_id',
     ];
 
     protected $casts = [
-        'price' => 'decimal:2',
         'images' => 'array',
         'is_featured' => 'boolean',
         'is_active' => 'boolean',
     ];
 
-    // Automatically generate slug and SKU
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($plant) {
-            if (empty($plant->slug)) {
-                $plant->slug = Str::slug($plant->name);
-            }
-            if (empty($plant->sku)) {
-                $plant->sku = 'PLT-' . strtoupper(Str::random(8));
-            }
-        });
-
-        static::updating(function ($plant) {
-            if ($plant->isDirty('name') && empty($plant->slug)) {
-                $plant->slug = Str::slug($plant->name);
-            }
-        });
-    }
-
-    // Relationships
     public function category()
     {
         return $this->belongsTo(Category::class);
     }
 
-    public function cartItems()
+    public function orders()
     {
-        return $this->hasMany(Cart::class);
+        return $this->belongsToMany(Order::class, 'order_items')
+                    ->withPivot('quantity', 'subtotal')
+                    ->withTimestamps();
     }
 
-    public function orderItems()
-    {
-        return $this->hasMany(OrderItem::class);
-    }
-
-    // Scopes
-    public function scopeActive($query)
-    {
-        return $query->where('is_active', true);
-    }
-
-    public function scopeFeatured($query)
-    {
-        return $query->where('is_featured', true);
-    }
-
-    public function scopeInStock($query)
-    {
-        return $query->where('stock_quantity', '>', 0);
-    }
-
-    public function scopeByDifficulty($query, $difficulty)
-    {
-        return $query->where('difficulty_level', $difficulty);
-    }
-
-    public function scopeByCategory($query, $categoryId)
-    {
-        return $query->where('category_id', $categoryId);
-    }
-
-    public function scopePriceRange($query, $min, $max)
-    {
-        return $query->whereBetween('price', [$min, $max]);
-    }
-
-    // Accessors
-    public function getFirstImageAttribute()
-    {
-        return $this->images ? $this->images[0] : null;
-    }
-
-    public function getFormattedPriceAttribute()
-    {
-        return '$' . number_format($this->price, 2);
-    }
-
-    public function getIsInStockAttribute()
-    {
-        return $this->stock_quantity > 0;
-    }
-
-    // Methods
     public function decreaseStock($quantity)
     {
         if ($this->stock_quantity >= $quantity) {
@@ -133,11 +59,29 @@ class Plant extends Model
     {
         $this->increment('stock_quantity', $quantity);
     }
-    public function getImageUrlAttribute()
+
+    // Accessor for image_url
+    public function getImageUrlAttribute(): string
     {
-    if ($this->image) {
-        return asset('storage/' . $this->image);
-       }
-    return null;
+        if ($this->image) {
+            return asset($this->image);
+        }
+        return asset('assets/images/placeholders/no_image.jpeg');
+    }
+
+    // Scopes
+    public function scopeActive(Builder $query): void
+    {
+        $query->where('is_active', true);
+    }
+
+    public function scopeFeatured(Builder $query): void
+    {
+        $query->where('is_featured', true);
+    }
+
+    public function scopeInStock(Builder $query): void
+    {
+        $query->where('stock_quantity', '>', 0);
     }
 }

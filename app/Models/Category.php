@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Builder;
 
 class Category extends Model
 {
@@ -14,33 +14,13 @@ class Category extends Model
         'name',
         'slug',
         'description',
-        'image',
-        'is_active'
+        'is_active',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
     ];
 
-    // Automatically generate slug when creating/updating
-    protected static function boot()
-    {
-        parent::boot();
-        
-        static::creating(function ($category) {
-            if (empty($category->slug)) {
-                $category->slug = Str::slug($category->name);
-            }
-        });
-        
-        static::updating(function ($category) {
-            if ($category->isDirty('name') && empty($category->slug)) {
-                $category->slug = Str::slug($category->name);
-            }
-        });
-    }
-
-    // Relationships
     public function plants()
     {
         return $this->hasMany(Plant::class);
@@ -52,8 +32,8 @@ class Category extends Model
     }
 
     // Scopes
-    public function scopeActive($query)
+    public function scopeActive(Builder $query): void
     {
-        return $query->where('is_active', true);
+        $query->where('is_active', true);
     }
 }
